@@ -1,116 +1,100 @@
 import React, { useState, useEffect } from 'react';
-import Todo from './todo';
 
 const Home = () => {
+  const [inputValue, setInputValue] = useState("");
   const [todos, setTodos] = useState([]);
-  const [newTodo, setNewTodo] = useState('');
 
-  const syncWithServer = async () => {
-    try {
-      const response = await fetch("https://playground.4geeks.com/apis/fake/todos/user/andresmiranda2000", {
-        method: "PUT",
-        body: JSON.stringify(todos),
-        headers: {
-          "Content-Type": "application/json"
-        },
-      });
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+  };
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log(data);
-      } else {
-        console.error('Error syncing with server:', response.status);
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      let body = todos.concat([{ "id": Date.now(), "label": inputValue, "done": false }]);
+
+      updateTodos(body);
+    }
+  };
+
+  const handleDelete = (taskId) => {
+    const updatedTodos = todos.filter((task) => task.id !== taskId);
+
+    updateTodos(updatedTodos);
+  };
+
+  const updateTodos = (updatedTodos) => {
+    fetch('https://playground.4geeks.com/apis/fake/todos/user/andresmiranda2000', {
+      method: "PUT",
+      body: JSON.stringify(updatedTodos),
+      headers: {
+        "Content-Type": "application/json"
       }
-    } catch (error) {
-      console.error('Error syncing with server:', error);
-    }
-  };
-
-  const addTodo = async (e) => {
-    if (e.key === 'Enter' && newTodo.trim() !== '') {
-      e.preventDefault();
-      const updatedTodos = [...todos, { text: newTodo, active: true }];
-      setTodos(updatedTodos);
-      await syncWithServer();
-      setNewTodo('');
-    }
-  };
-
-  const removeTodo = async (index) => {
-    const updatedTodos = [...todos];
-    updatedTodos.splice(index, 1);
-
-    setTodos(updatedTodos);
-    await syncWithServer();
-  };
-
-  const clearAllTodos = async () => {
-    setTodos([]);
-    await syncWithServer();
-  };
-
-  const countActiveTodos = () => {
-    return todos.filter((todo) => todo.active).length;
+    })
+      .then(resp => {
+        if (!resp.ok) throw Error(`La response no es ok`)
+        return resp.json();
+      })
+      .then(data => {
+        setTodos(updatedTodos);
+      })
+      .catch(error => {
+        alert(`Hay un error`)
+        console.log(error);
+      });
   };
 
   useEffect(() => {
-    const fetchTodos = async () => {
-      try {
-        const response = await fetch("https://playground.4geeks.com/apis/fake/todos/user/andresmiranda2000", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setTodos(data);
-        } else {
-          console.error('Error fetching todos:', response.status);
-        }
-      } catch (error) {
-        console.error('Error fetching todos:', error);
+    fetch('https://playground.4geeks.com/apis/fake/todos/user/andresmiranda2000', {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json"
       }
-    };
-
-    fetchTodos();
-  }, []);
+    })
+      .then(resp => {
+        if (!resp.ok) throw Error(`La response no es ok`)
+        return resp.json();
+      })
+      .then(data => {
+        setTodos(data)
+        console.log(data);
+      })
+      .catch(error => {
+        alert(`Hay un error`)
+        console.log(error);
+      });
+  }, [])
 
   return (
-    <div className="container text-center mt-5">
-      <h1 className="mb-4">Todos</h1>
-      <div className="card p-3 mx-auto" style={{ maxWidth: '400px' }}>
-        <form>
-          <input
-            type="text"
-            value={newTodo}
-            onChange={(e) => setNewTodo(e.target.value)}
-            className="form-control mb-3"
-            placeholder="Nueva tarea"
-            onKeyPress={addTodo}
-          />
-        </form>
-        {todos.length === 0 ? (
-          <p>No hay tareas, añadir tareas</p>
-        ) : (
-          <div>
-            {todos.map((todo, index) => (
-              <Todo
-                key={index}
-                index={index}
-                todo={todo}
-                removeTodo={removeTodo}
-              />
-            ))}
-            <p className="text-left mt-3">
-              {countActiveTodos()} {countActiveTodos() !== 1 ? 'tareas' : 'tarea'} por hacer
-            </p>
-            <button className="btn btn-danger" onClick={clearAllTodos}>
-              Limpiar todas las tareas
-            </button>
-          </div>
-        )}
+    <div className="container mt-5">
+      <div className="card p-4 text-center">
+        <h1 className="mb-4">Tareas por hacer</h1>
+        <ul className="list-unstyled text-left">
+          <li className="mb-3">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
+              placeholder="¿Qué tengo que hacer?"
+              className="form-control"
+            />
+          </li>
+          {todos.length === 0 ? (
+            <li className="mb-3">¡Todo completado!</li>
+          ) : (
+            todos.map((item) => (
+              <li key={item.id} className="mb-3">
+                {item.label}
+                <button
+                  className="btn btn-danger ml-2 btn-sm"
+                  onClick={() => handleDelete(item.id)}
+                > X
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+        {todos.length > 0 && <div>{todos.length} tarea(s) por hacer.</div>}
       </div>
     </div>
   );
